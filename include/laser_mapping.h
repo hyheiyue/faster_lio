@@ -178,8 +178,7 @@ private:
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pub_odom_aft_mapped_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_path_;
 
-  std::string tf_imu_frame_;
-  std::string tf_world_frame_;
+
 
   std::mutex mtx_buffer_;
   std::deque<double> time_buffer_;
@@ -228,6 +227,7 @@ private:
   bool runtime_pos_log_ = true;
   int pcd_save_interval_ = -1;
   bool path_save_en_ = false;
+  bool tf_pub_en_ = false;
   std::string dataset_;
 
   PointCloudType::Ptr pcl_wait_save_{new PointCloudType()}; // debug save

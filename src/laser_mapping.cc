@@ -13,6 +13,7 @@
 
 const std::string PARAM_PATH_SAVE_EN = "path_save_en";
 const std::string PARAM_PUBLISH_PATH_PUBLISH_EN ="publish.path_publish_en";
+const std::string PARAM_PUBLISH_TF_PUBLISH_EN ="publish.tf_publish_en";
 const std::string PARAM_PUBLISH_SCAN_PUBLISH_EN ="publish.scan_publish_en";
 const std::string PARAM_PUBLISH_DENSE_PUBLISH_EN ="publish.dense_publish_en";
 const std::string PARAM_PUBLISH_SCAN_BODYFRAME_PUB_EN ="publish.scan_bodyframe_pub_en";
@@ -190,6 +191,10 @@ void LaserMapping::LoadParams() {
     if (!this->get_parameter(PARAM_PUBLISH_PATH_PUBLISH_EN, path_pub_en_)) {
         RCLCPP_WARN(this->get_logger(), "Parameter path_pub_en_ not found");
     }
+
+    if (!this->get_parameter(PARAM_PUBLISH_TF_PUBLISH_EN, tf_pub_en_)) {
+        RCLCPP_WARN(this->get_logger(), "Parameter tf_pub_en_ not found");
+    }
     
     if (!this->get_parameter(PARAM_PUBLISH_SCAN_PUBLISH_EN, scan_pub_en_)) {
         RCLCPP_WARN(this->get_logger(), "Parameter scan_pub_en_ not found");
@@ -334,7 +339,7 @@ void LaserMapping::LoadParams() {
     }
 
     path_.header.stamp = rclcpp::Clock().now();
-    path_.header.frame_id = "odom";
+    path_.header.frame_id = "camera_init";
 
     voxel_scan_.setLeafSize(filter_size_surf_min, filter_size_surf_min, filter_size_surf_min);
 
@@ -360,12 +365,11 @@ bool LaserMapping::LoadParamsFromYAML(const std::string &yaml_file) {
     auto yaml = YAML::LoadFile(yaml_file);
     try {
         path_pub_en_ = yaml["publish"]["path_publish_en"].as<bool>();
+        tf_pub_en_ = yaml["publish"]["tf_publish_en"].as<bool>();
         scan_pub_en_ = yaml["publish"]["scan_publish_en"].as<bool>();
         dense_pub_en_ = yaml["publish"]["dense_publish_en"].as<bool>();
         scan_body_pub_en_ = yaml["publish"]["scan_bodyframe_pub_en"].as<bool>();
         scan_effect_pub_en_ = yaml["publish"]["scan_effect_pub_en"].as<bool>();
-        tf_imu_frame_ = yaml["publish"]["tf_imu_frame"].as<std::string>("livox_frame");
-        tf_world_frame_ = yaml["publish"]["tf_world_frame"].as<std::string>("odom");
         path_save_en_ = yaml["path_save_en"].as<bool>();
 
         options::NUM_MAX_ITERATIONS = yaml["max_iteration"].as<int>();
@@ -497,12 +501,12 @@ void LaserMapping::SubAndPubToROS(){
 
     // ROS2
     path_.header.stamp = rclcpp::Clock().now();
-    path_.header.frame_id = "odom";
-    pub_laser_cloud_world_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("cloud_registered", 100000);
-    pub_laser_cloud_body_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("cloud_registered_body", 100000);
-    pub_laser_cloud_effect_world_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("cloud_registered_effect_world", 100000);
-    pub_odom_aft_mapped_ = this->create_publisher<nav_msgs::msg::Odometry>("Odometry", 100000);
-    pub_path_ = this->create_publisher<nav_msgs::msg::Path>("path", 100000);
+    path_.header.frame_id = "camera_init";
+    pub_laser_cloud_world_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("cloud_registered", 20);
+    pub_laser_cloud_body_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("cloud_registered_body", 20);
+    pub_laser_cloud_effect_world_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("cloud_effected", 20);
+    pub_odom_aft_mapped_ = this->create_publisher<nav_msgs::msg::Odometry>("aft_mapped_to_init", 20);
+    pub_path_ = this->create_publisher<nav_msgs::msg::Path>("path", 20);
     br  = std::make_shared<tf2_ros::TransformBroadcaster>(this);
 }
 
@@ -967,7 +971,7 @@ void LaserMapping::PublishPath(const rclcpp::Publisher<nav_msgs::msg::Path>::Sha
     // msg_body_pose_.header.stamp = ros::Time().fromSec(lidar_end_time_);
     rclcpp::Time time_stamp(static_cast<uint64_t>(lidar_end_time_ * 1e9));
     msg_body_pose_.header.stamp = time_stamp;
-    msg_body_pose_.header.frame_id = "odom";
+    msg_body_pose_.header.frame_id = "camera_init";
 
     /*** if path is too large, the rvis will crash ***/
     path_.poses.push_back(msg_body_pose_);
@@ -977,8 +981,8 @@ void LaserMapping::PublishPath(const rclcpp::Publisher<nav_msgs::msg::Path>::Sha
 }
 
 void LaserMapping::PublishOdometry(const rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pub_odom_aft_mapped) {
-    odom_aft_mapped_.header.frame_id = "odom";
-    odom_aft_mapped_.child_frame_id = "livox_frame";
+    odom_aft_mapped_.header.frame_id = "camera_init";
+    odom_aft_mapped_.child_frame_id = "body";
     rclcpp::Time time_stamp(static_cast<uint64_t>(lidar_end_time_ * 1e9));
     odom_aft_mapped_.header.stamp = time_stamp;
     // odom_aft_mapped_.header.stamp = ros::Time().fromSec(lidar_end_time_);  // ros::Time().fromSec(lidar_end_time_);
@@ -1009,18 +1013,22 @@ void LaserMapping::PublishOdometry(const rclcpp::Publisher<nav_msgs::msg::Odomet
     // br.sendTransform(tf::StampedTransform(transform, odom_aft_mapped_.header.stamp, tf_world_frame_, tf_imu_frame_));
 
     // ROS2
-    geometry_msgs::msg::TransformStamped stampedTransform;
-    stampedTransform.header.stamp = odom_aft_mapped_.header.stamp;
-    stampedTransform.header.frame_id =  "odom";
-    stampedTransform.child_frame_id =  "livox_frame";
-    stampedTransform.transform.translation.x = odom_aft_mapped_.pose.pose.position.x;
-    stampedTransform.transform.translation.y = odom_aft_mapped_.pose.pose.position.y;
-    stampedTransform.transform.translation.z = odom_aft_mapped_.pose.pose.position.z;
-    stampedTransform.transform.rotation.w = odom_aft_mapped_.pose.pose.orientation.w;
-    stampedTransform.transform.rotation.x = odom_aft_mapped_.pose.pose.orientation.x;
-    stampedTransform.transform.rotation.y = odom_aft_mapped_.pose.pose.orientation.y;
-    stampedTransform.transform.rotation.z = odom_aft_mapped_.pose.pose.orientation.z;
-    br->sendTransform(stampedTransform);
+    if(tf_pub_en_)
+    {
+        geometry_msgs::msg::TransformStamped stampedTransform;
+        stampedTransform.header.stamp = odom_aft_mapped_.header.stamp;
+        stampedTransform.header.frame_id =  "camera_init";
+        stampedTransform.child_frame_id =  "aft_mapped";
+        stampedTransform.transform.translation.x = odom_aft_mapped_.pose.pose.position.x;
+        stampedTransform.transform.translation.y = odom_aft_mapped_.pose.pose.position.y;
+        stampedTransform.transform.translation.z = odom_aft_mapped_.pose.pose.position.z;
+        stampedTransform.transform.rotation.w = odom_aft_mapped_.pose.pose.orientation.w;
+        stampedTransform.transform.rotation.x = odom_aft_mapped_.pose.pose.orientation.x;
+        stampedTransform.transform.rotation.y = odom_aft_mapped_.pose.pose.orientation.y;
+        stampedTransform.transform.rotation.z = odom_aft_mapped_.pose.pose.orientation.z;
+        br->sendTransform(stampedTransform);
+    }
+    
 
 }
 
@@ -1071,7 +1079,7 @@ void LaserMapping::PublishFrameWorld() {
         pcl::toROSMsg(*filteredCloudWorld, laserCloudmsg);  // 使用过滤后的点云
         rclcpp::Time time_stamp(static_cast<uint64_t>(lidar_end_time_ * 1e9));
         laserCloudmsg.header.stamp = time_stamp;
-        laserCloudmsg.header.frame_id = "odom";
+        laserCloudmsg.header.frame_id = "camera_init";
         pub_laser_cloud_world_->publish(laserCloudmsg);
         publish_count_ -= options::PUBFRAME_PERIOD;
     }
@@ -1146,7 +1154,7 @@ void LaserMapping::PublishFrameBody(const rclcpp::Publisher<sensor_msgs::msg::Po
     pcl::toROSMsg(*filtered_cloud, laserCloudmsg);
     rclcpp::Time time_stamp(static_cast<uint64_t>(lidar_end_time_ * 1e9));
     laserCloudmsg.header.stamp = time_stamp;
-    laserCloudmsg.header.frame_id = "livox_frame";
+    laserCloudmsg.header.frame_id = "body";
     pub_laser_cloud_body_->publish(laserCloudmsg);
     publish_count_ -= options::PUBFRAME_PERIOD;
 }
@@ -1164,7 +1172,7 @@ void LaserMapping::PublishFrameEffectWorld(const rclcpp::Publisher<sensor_msgs::
     rclcpp::Time time_stamp(static_cast<uint64_t>(lidar_end_time_ * 1e9));
     laserCloudmsg.header.stamp = time_stamp;
     // laserCloudmsg.header.stamp = ros::Time().fromSec(lidar_end_time_);
-    laserCloudmsg.header.frame_id = "odom";
+    laserCloudmsg.header.frame_id = "camera_init";
     pub_laser_cloud_effect_world_->publish(laserCloudmsg);
     publish_count_ -= options::PUBFRAME_PERIOD;
 }

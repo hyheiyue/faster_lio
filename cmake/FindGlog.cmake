@@ -125,7 +125,8 @@ list(APPEND GLOG_CHECK_LIBRARY_DIRS
         /usr/local/lib
         /usr/local/homebrew/lib # Mac OS X.
         /opt/local/lib
-        /usr/lib)
+        /usr/lib
+        /usr/lib/x86_64-linux-gnu)
 # Windows (for C:/Program Files prefix).
 list(APPEND GLOG_CHECK_LIBRARY_SUFFIXES
         glog/lib

@@ -117,10 +117,13 @@ ament_target_dependencies(${PROJECT_NAME}_lib
         )
 
         
-rosidl_target_interfaces(${PROJECT_NAME}_lib
-${PROJECT_NAME}
-"rosidl_typesupport_cpp"
-)
+rosidl_get_typesupport_target(cpp_typesupport_target
+  ${PROJECT_NAME} "rosidl_typesupport_cpp")
+
+target_link_libraries(${PROJECT_NAME}_lib
+  ${cpp_typesupport_target})
+
+
 target_include_directories(${PROJECT_NAME}_lib PUBLIC
 $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 $<INSTALL_INTERFACE:include>
