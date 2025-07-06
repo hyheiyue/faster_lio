@@ -11,13 +11,13 @@
 
 namespace velodyne_ros {
 struct EIGEN_ALIGN16 Point {
-    PCL_ADD_POINT4D;
-    float intensity;
-    float time;
-    std::uint16_t ring;
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  PCL_ADD_POINT4D;
+  float intensity;
+  float time;
+  std::uint16_t ring;
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
-}  // namespace velodyne_ros
+} // namespace velodyne_ros
 
 // clang-format off
 POINT_CLOUD_REGISTER_POINT_STRUCT(velodyne_ros::Point,
@@ -27,16 +27,16 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(velodyne_ros::Point,
 
 namespace ouster_ros {
 struct EIGEN_ALIGN16 Point {
-    PCL_ADD_POINT4D;
-    float intensity;
-    uint32_t t;
-    uint16_t reflectivity;
-    uint16_t ring;
-    uint16_t ambient;
-    uint32_t range;
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  PCL_ADD_POINT4D;
+  float intensity;
+  uint32_t t;
+  uint16_t reflectivity;
+  uint16_t ring;
+  uint16_t ambient;
+  uint32_t range;
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
-}  // namespace ouster_ros
+} // namespace ouster_ros
 
 // clang-format off
 POINT_CLOUD_REGISTER_POINT_STRUCT(ouster_ros::Point,
@@ -62,43 +62,45 @@ enum class LidarType { AVIA = 1, VELO32, OUST64 };
  * just unify the point format from livox/velodyne to PCL
  */
 class PointCloudPreprocess {
-   public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    PointCloudPreprocess() = default;
-    ~PointCloudPreprocess() = default;
+  PointCloudPreprocess() = default;
+  ~PointCloudPreprocess() = default;
 
-    /// processors
-    void PCProcess(const livox_ros_driver2::msg::CustomMsg::SharedPtr msg, PointCloudType::Ptr &pcl_out);
-    void PCProcess(const sensor_msgs::msg::PointCloud2::SharedPtr msg, PointCloudType::Ptr &pcl_out);
-    void Set(LidarType lid_type, double bld, int pfilt_num);
+  /// processors
+  void PCProcess(const livox_ros_driver2::msg::CustomMsg::SharedPtr msg,
+                 PointCloudType::Ptr &pcl_out);
+  void PCProcess(const sensor_msgs::msg::PointCloud2::SharedPtr msg,
+                 PointCloudType::Ptr &pcl_out);
+  void Set(LidarType lid_type, double bld, int pfilt_num);
 
-    // accessors
-    double &Blind() { return blind_; }
-    int &NumScans() { return num_scans_; }
-    int &NumHorizontalScans() { return num_horizontal_scans_; }
-    int &PointFilterNum() { return point_filter_num_; }
-    bool &FeatureEnabled() { return feature_enabled_; }
-    float &TimeScale() { return time_scale_; }
-    LidarType GetLidarType() const { return lidar_type_; }
-    void SetLidarType(LidarType lt) { lidar_type_ = lt; }
+  // accessors
+  double &Blind() { return blind_; }
+  int &NumScans() { return num_scans_; }
+  int &NumHorizontalScans() { return num_horizontal_scans_; }
+  int &PointFilterNum() { return point_filter_num_; }
+  bool &FeatureEnabled() { return feature_enabled_; }
+  float &TimeScale() { return time_scale_; }
+  LidarType GetLidarType() const { return lidar_type_; }
+  void SetLidarType(LidarType lt) { lidar_type_ = lt; }
 
-   private:
-    void AviaHandler(const livox_ros_driver2::msg::CustomMsg::SharedPtr msg);
-    void Oust64Handler(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
-    void VelodyneHandler(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
+private:
+  void AviaHandler(const livox_ros_driver2::msg::CustomMsg::SharedPtr msg);
+  void Oust64Handler(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
+  void VelodyneHandler(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
 
-    PointCloudType cloud_full_, cloud_out_;
+  PointCloudType cloud_full_, cloud_out_;
 
-    LidarType lidar_type_ = LidarType::AVIA;
-    bool feature_enabled_ = false;
-    int point_filter_num_ = 1;
-    int num_scans_ = 6;
-    int num_horizontal_scans_ = 1024;
-    double blind_ = 0.01;
-    float time_scale_ = 1e-3;
-    bool given_offset_time_ = false;
+  LidarType lidar_type_ = LidarType::AVIA;
+  bool feature_enabled_ = false;
+  int point_filter_num_ = 1;
+  int num_scans_ = 6;
+  int num_horizontal_scans_ = 1024;
+  double blind_ = 0.01;
+  float time_scale_ = 1e-3;
+  bool given_offset_time_ = false;
 };
-}  // namespace faster_lio
+} // namespace faster_lio
 
 #endif

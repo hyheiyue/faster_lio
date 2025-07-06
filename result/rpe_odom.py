@@ -32,21 +32,38 @@ def rpe_odom(args):
     print("Read %d pose from est_file: %s" % (traj_est.num_poses, est_name))
 
     traj_ref, traj_est = sync.associate_trajectories(
-        traj_ref, traj_est, args.t_max_diff, args.t_offset,
-        first_name=ref_name, snd_name=est_name)
-    print("Synced poses of ref: %d, Synced poses of est: %d" % (traj_ref.num_poses, traj_est.num_poses))
+        traj_ref,
+        traj_est,
+        args.t_max_diff,
+        args.t_offset,
+        first_name=ref_name,
+        snd_name=est_name,
+    )
+    print(
+        "Synced poses of ref: %d, Synced poses of est: %d"
+        % (traj_ref.num_poses, traj_est.num_poses)
+    )
 
     id_pairs = filters.id_pairs_from_delta(
-        traj_est.poses_se3, args.delta, args.delta_unit,
-        args.rel_delta_tol, all_pairs=args.all_pairs)
-    print("Select %d paris from synced poses for every %d %s" % (len(id_pairs), args.delta, args.delta_unit))
+        traj_est.poses_se3,
+        args.delta,
+        args.delta_unit,
+        args.rel_delta_tol,
+        all_pairs=args.all_pairs,
+    )
+    print(
+        "Select %d paris from synced poses for every %d %s"
+        % (len(id_pairs), args.delta, args.delta_unit)
+    )
 
     def rpe_odom_segment(ref_xyz, est_xyz, i, j):
         # align
-        r_a, t_a, s = geometry.umeyama_alignment(est_xyz[i:j + 1, :].T, ref_xyz[i:j + 1, :].T, False)
+        r_a, t_a, s = geometry.umeyama_alignment(
+            est_xyz[i : j + 1, :].T, ref_xyz[i : j + 1, :].T, False
+        )
         ref_d = ref_xyz[j] - ref_xyz[i]
         est_d = est_xyz[j] - est_xyz[i]
-        est_d_aligned = (np.dot(r_a, est_d))
+        est_d_aligned = np.dot(r_a, est_d)
         error = np.linalg.norm(ref_d - est_d_aligned)
         return error
 
@@ -59,7 +76,10 @@ def rpe_odom(args):
     rmse = np.sqrt(np.mean(np.power(errors, 2)))
     max_v = np.max(errors)
     print("relative translation error:")
-    print("\trmse: %f\n\tmax: %f\n\tmin: %f\n\tmean: %f\n" % (rmse, np.max(errors), np.min(errors), np.mean(errors)))
+    print(
+        "\trmse: %f\n\tmax: %f\n\tmin: %f\n\tmean: %f\n"
+        % (rmse, np.max(errors), np.min(errors), np.mean(errors))
+    )
     return rmse
 
 
