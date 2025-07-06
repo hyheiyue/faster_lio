@@ -983,6 +983,7 @@ void LaserMapping::PublishOdometry(const rclcpp::Publisher<nav_msgs::msg::Odomet
     odom_aft_mapped_.header.stamp = time_stamp;
     // odom_aft_mapped_.header.stamp = ros::Time().fromSec(lidar_end_time_);  // ros::Time().fromSec(lidar_end_time_);
     SetPosestamp(odom_aft_mapped_.pose);
+    SetVelstamp(odom_aft_mapped_.twist);
     pub_odom_aft_mapped->publish(odom_aft_mapped_);
     auto P = kf_.get_P();
     for (int i = 0; i < 6; i++) {
@@ -1198,6 +1199,23 @@ void LaserMapping::SetPosestamp(T &out) {
     out.pose.orientation.z = state_point_.rot.coeffs()[2];
     out.pose.orientation.w = state_point_.rot.coeffs()[3];
 }
+template <typename T>
+void LaserMapping::SetVelstamp(T &out) {
+
+    out.twist.linear.x  = state_point_.vel(0);
+    out.twist.linear.y  = state_point_.vel(1);
+    out.twist.linear.z  = state_point_.vel(2);
+
+    if (!measures_.imu_.empty() && measures_.imu_.back()) {
+        const auto &imu = measures_.imu_.back();
+        out.twist.angular.x = imu->angular_velocity.x;
+        out.twist.angular.y = imu->angular_velocity.y;
+        out.twist.angular.z = imu->angular_velocity.z;
+    } else {
+        out.twist.angular.x = out.twist.angular.y = out.twist.angular.z = 0.0;
+    }
+}
+
 
 void LaserMapping::PointBodyToWorld(const PointType *pi, PointType *const po) {
     common::V3D p_body(pi->x, pi->y, pi->z);

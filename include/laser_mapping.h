@@ -106,6 +106,8 @@ class LaserMapping : public rclcpp::Node {
     std::shared_ptr<tf2_ros::TransformBroadcaster> br;
     template <typename T>
     void SetPosestamp(T &out);
+    template <typename T>
+    void SetVelstamp(T &out);
 
     void PointBodyToWorld(PointType const *pi, PointType *const po);
     void PointBodyToWorld(const common::V3F &pi, PointType *const po);
